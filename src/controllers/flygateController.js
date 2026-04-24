@@ -30,7 +30,7 @@ const validatePNR = async (req, res) => {
 
         if (response.data) {
             // Store order details for later use in confirmOrder
-            await prisma.pendingOrder.upsert({
+            await prisma.fLYGATEDetails.upsert({
                 where: { orderId: orderid },
                 update: {
                     amount: Number(response.data.Amount || response.data.amount),
@@ -66,7 +66,7 @@ const confirmOrder = async (req, res) => {
     const { orderid, beneficiaryAcno, remark, traceNumber } = req.body;
 
     // Retrieve stored data from validation step if not provided in body
-    const storedOrder = (await prisma.pendingOrder.findUnique({
+    const storedOrder = (await prisma.fLYGATEDetails.findUnique({
         where: { orderId: orderid }
     })) || {};
     const amount = req.body.amount || storedOrder.amount;
@@ -126,7 +126,7 @@ const confirmOrder = async (req, res) => {
         );
 
         // Clean up stored order
-        await prisma.pendingOrder.delete({
+        await prisma.fLYGATEDetails.delete({
             where: { orderId: orderid }
         }).catch(() => {}); // Ignore error if already deleted or record missing
 
