@@ -173,25 +173,48 @@ model RefundLedger {
 }
 
 
-model transactions {
-  id Int @id @default(autoincrement())
-  drAcNo String
-  payername String
-  crAcNo String
-  creditedTO  String?
-  cbs_reference String?
-  trnTime DateTime @default(now())
-  trnDate DateTime
-  status trnStatus
-}
-
-model PendingOrder {
-  orderId      String   @id
-  amount       Float
-  customerName String?
-  createdAt    DateTime @default(now())
-
-  @@map("pending_orders")
+model Transactions {
+  auto             Int       @id @default(autoincrement()) @map("Auto")
+  userId           String?   @db.VarChar(25) @map("UserId")
+  scrollId         String?   @db.VarChar(50) @map("ScrollId")
+  batchId          String?   @db.VarChar(50) @map("BatchId")
+  iRefNo           String?   @db.VarChar(50) @map("IRefNo")
+  trnDate          DateTime? @db.Timestamp @map("TrnDate")
+  branchCode       String?   @db.VarChar(10) @map("BranchCode")
+  acNo             String?   @db.VarChar(20) @map("AcNo")
+  depNo            Int?      @db.SmallInt @map("DepNo")
+  moduleType       Int?      @db.SmallInt @map("ModuleType")
+  crDr             String?   @db.VarChar(6) @map("CrDr") // Expected 'DEBIT' or 'CREDIT'
+  amount           Decimal?  @db.Money @map("Amount")
+  currencyCode     String?   @db.VarChar(5) @map("CurrencyCode")
+  utilRefNo        String?   @db.VarChar(100) @map("UtilRefNo")
+  utility          String?   @db.VarChar(100) @map("Utility")
+  custIden         String?   @db.VarChar(50) @map("CustIden")
+  depPeriod        String?   @db.VarChar(100) @map("DepPeriod")
+  isExcess         String?   @db.VarChar(10) @map("IsExcess")
+  comAmount        Decimal?  @db.Money @map("ComAmount")
+  exchgAmount      Decimal?  @db.Money @map("ExchgAmount")
+  particulars      String?   @db.VarChar(500) @map("Particulars")
+  remarks          String?   @db.VarChar(100) @map("Remarks")
+  status           Int?      @db.SmallInt @map("Status")
+  entryTerminal    String?   @db.VarChar(200) @map("EntryTerminal")
+  entryTime        DateTime? @db.Timestamp @map("EntryTime")
+  uniqueId         String?   @db.VarChar(50) @unique @map("UniqueId")
+  processedTime    DateTime? @db.Timestamp @map("ProcessedTime")
+  dispNo           Int?      @db.SmallInt @map("DispNo")
+  tScrollId        Int?      @map("TScrollId")
+  ackBy            String?   @db.VarChar(25) @map("AckBy")
+  channel          String?   @db.VarChar(10) @map("Channel")
+  subChannel       String?   @db.VarChar(10) @map("SubChannel")
+  faultCode        Decimal?  @db.Decimal @map("FAULTCODE")
+  faultString      String?   @db.Text @map("FAULTSTRING") // nvarchar 1000
+  passBy           String?   @db.VarChar(25) @map("PassBy")
+  instAmount       Decimal?  @db.Money @map("InstAmount")
+  newMatAmount     Decimal?  @db.Money @map("NewMatAmount")
+  trnAccountAmt    Decimal?  @db.Money @map("TrnAccountAmt")
+  trnAccount       String?   @db.VarChar(50) @map("TrnAccount")
+  thirdPartyName   String?   @db.Text @map("ThirdPartyName") // nvarchar 1000
+  disasterRiskAmt  Decimal?  @db.Money @map("DisasterRiskAmt")
 }
 
 enum watchlistStatus {

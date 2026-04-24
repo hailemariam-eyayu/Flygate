@@ -17,7 +17,8 @@ console.log("Auth routes");
 app.use("/auth", authRoutes);
 console.log("Movie routes loaded");
 app.use("/movies", movieRoutes);
-app.use("airline", flygateRoutes);
+console.log("Flygate routes loaded");
+app.use("/airline", flygateRoutes);
 
 //Handle unhandled promise rejection eg, DB connection errors
 process.on("unhandledRejection", (err) => {
@@ -43,7 +44,7 @@ process.on("SIGTERM", async () => {
 });
 
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 4001;
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+  console.log(`Server is running at http://localhost:${port}`);
 });

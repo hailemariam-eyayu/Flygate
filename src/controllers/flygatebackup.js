@@ -1,3 +1,4 @@
+
 import express from "express";
 import soap from "soap";
 import axios from "axios"; // Added missing import
@@ -5,7 +6,7 @@ import { config } from 'dotenv';
 import { prisma } from "../config/db.js";
 config();
 
-const shortcode = process.env.shortCodeT || 526341;
+const shortcode = process.env.shortCodeT;
 const url = process.env.BASE_URL; // Ensure URL is defined
 
 const validatePNR = async (req, res) => {
@@ -16,59 +17,46 @@ const validatePNR = async (req, res) => {
     try {
         // Corrected query parameter syntax using URLSearchParams or template literals
         console.log("Try block");
-        const response = await axios.get(`${url}/Enat/api/V1.0/Enat/GetOrder`, {
-            params: {
-                OrderId: orderid,
-                shortCode: shortcode
-            },
-            // Add this block
-            auth: {
-                username: 'EnatBankTest@ethiopianairlines.com',
-                password: 'EnatBankTest@!23'
-            },
-            // Prevent 500 status codes from throwing an exception so we can read the business error in response.data
-            validateStatus: (status) => status >= 200 && status < 600
-        });
+    const response = await axios.get(`${url}/Enat/api/V1.0/Enat/GetOrder`, {
+    params: {
+        OrderId: orderid,
+        shortCode: shortcode
+    },
+    // Add this block
+    auth: {
+        username: 'EnatBankTest@ethiopianairlines.com',
+        password: 'EnatBankTest@!23'
+    }
+});
 
-        // Check for success based on statusCodeResponse (0 or 1 usually success, 4 is Not Found)
-        if (response.data && response.data.statusCodeResponseDescription === "Success" || (response.data.amount > 0)) {
+        if (response.data) {
             // Store order details for later use in confirmOrder
             console.log("Response data:", response.data);
-
             const savedOrder = await prisma.fLYGATEDetails.upsert({
                 where: { orderId: orderid },
                 update: {
-                    amount: Number(response.data.Amount || response.data.amount || 0),
-                    customerName: response.data.CustomerName || response.data.customerName || "Unknown",
+                    amount: Number(response.data.Amount || response.data.amount),
+                    customerName: response.data.CustomerName || response.data.customerName,
                 },
                 create: {
                     orderId: orderid,
-                    amount: Number(response.data.Amount || response.data.amount || 0),
-                    customerName: response.data.CustomerName || response.data.customerName || "Unknown",
+                    amount: Number(response.data.Amount || response.data.amount),
+                    customerName: response.data.CustomerName || response.data.customerName,
                 }
             });
+            
+            console.log("Upserted order details for orderId:", orderid);
 
             return res.status(200).json({
                 success: true,
                 data: savedOrder
-            });
-        } else {
-            console.log("Validation Failed. Full Response:", JSON.stringify(response.data, null, 2));
-            return res.status(404).json({
-                success: false,
-                message: response.data.statusCodeResponseDescription || response.data.message || "Order not found or expired",
-                errorCode: response.data.errorCode,
-                orderId: response.data.orderId || orderid,
-                rawResponse: response.data
             });
         }
     } catch (error) {
         console.error("Error occurred while validating PNR:", error);
         return res.status(500).json({
             success: false,
-            message: error.response?.data?.message || error.message || "Internal Server Error",
-            error: error.response?.data || error.message,
-            statusCode: error.response?.status || 500
+            message: error.message
         });
     }
 };
@@ -80,28 +68,45 @@ const CBS_USER = process.env.cbs_user || "ADCUSER";
 const CBS_PASS =  process.env.cbs_pass || "cbs_password"; // Replace with actual password
 
 const confirmOrder = async (req, res) => {
-    const { orderid, beneficiaryAcno, remark } = req.body;
+    const { orderid, beneficiaryAcno, remark, traceNumber } = req.body;
+
+    // Retrieve stored data from validation step if not provided in body
+    const storedOrder = (await prisma.fLYGATEDetails.findUnique({
+        where: { orderId: orderid }
+    })) || {};
+    const amount = req.body.amount || storedOrder.amount;
+    const customerName = req.body.customerName || storedOrder.customerName;
 
     try {
-        // Retrieve stored data from validation step
-        // const storedOrder = await prisma.fLYGATEDetails.findUnique({
-        const storedOrder = await prisma.fLYGATEDetails.findFirst({        
-            where: { orderId: orderid }
+        // --- 1. CBS INTERACTION (SOAP with Basic Auth) ---
+        
+        // Create the Basic Auth Header (Base64 encoded)
+        const authHeader = "Basic " + Buffer.from(`${CBS_USER}:${CBS_PASS}`).toString("base64");
+
+        const soapOptions = {
+            wsdl_headers: { Authorization: authHeader } // For fetching the WSDL
+        };
+
+        const soapClient = await soap.createClientAsync(CBS_URL, soapOptions);
+        
+        // Set security for the actual method calls
+        soapClient.setSecurity(new soap.BasicAuthSecurity(CBS_USER, CBS_PASS));
+
+        const cbsHeader = {
+            SOURCE: "ADC",
+            USERID: CBS_USER,
+            BRANCH: "001", // BranchCode from Web.config
+            SERVICE: "FCUBSAccService",
+            OPERATION: "CreateTransaction"
+        };
+
+        // CBS Interaction here.
+        const [cbsResult] = await soapClient.CreateTransactionAsync({ 
+            FCUBS_HEADER: cbsHeader, 
+            FCUBS_BODY: { CUSTACNO: beneficiaryAcno, LCYAMOUNT: amount, REMARK: remark } 
         });
 
-        if (!storedOrder) {
-            return res.status(404).json({ status: "Error", message: "Order details not found. Please validate PNR first." });
-        }
-
-        // Checking order status whether it is already paid or not
-        if (storedOrder.status === 1) { 
-            return res.status(400).json({ status: "Error", message: "Order has already been paid." });
-        }   
-
-        const amount = storedOrder.amount;
-        const customerName = storedOrder.customerName;
-        const finalTraceNumber = storedOrder.id || `TRC${Date.now()}`; // Using DB ID for TraceNumber
-        const finalReferenceNumber = `CBS${Date.now()}`; // Default value for CBS reference
+        const cbsRef = cbsResult.REFERENCE_NO;
 
         // --- 2. FLYGATE INTERACTION (REST) ---
         
@@ -112,22 +117,17 @@ const confirmOrder = async (req, res) => {
             Currency: "ETB",
             status: 1,
             remark: "Successfully Paid",
-            TraceNumber: finalTraceNumber,
-            ReferenceNumber: finalReferenceNumber,
+            TraceNumber: traceNumber,
+            ReferenceNumber: cbsRef,
             PayerCustomerName: customerName || "Enat Customer",
             PaidAccountNumber: beneficiaryAcno
         };
 
-        // FlyGate interaction
+        // If FlyGate also requires Basic Auth, add the headers object here
         const flyGateResponse = await axios.post(
-            `${url}/Enat/api/V1.0/Enat/ConfirmOrder`, 
+            `${process.env.url}/Enat/api/V1.0/Enat/ConfirmOrder`, 
             flyGatePayload,
-            { 
-                auth: {
-                    username: 'EnatBankTest@ethiopianairlines.com',
-                    password: 'EnatBankTest@!23'
-                }
-            }
+            { headers: { Authorization: authHeader } } // Example if FlyGate uses same credentials
         );
 
         // Clean up stored order
@@ -138,16 +138,11 @@ const confirmOrder = async (req, res) => {
         return res.json({
             status: "Success",
             message: "Successfully transferred",
-            reference: finalReferenceNumber,
-            rawData: flyGateResponse.data
+            reference: cbsRef
         });
 
     } catch (error) {
-        return res.status(500).json({ 
-            status: "Error", 
-            message: error.response?.data?.message || error.message,
-            rawData: error.response?.data || null
-        });
+        return res.status(500).json({ status: "Error", message: error.message });
     }
 };
 
