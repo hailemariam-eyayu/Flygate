@@ -2,11 +2,14 @@ import express from 'express';
 import movieRoutes from "./routes/MovieRoutes.js";
 import authRoutes from "./routes/AuthRoutes.js";
 import flygateRoutes from "./routes/flygateRoutes.js";
+import watchlistRoutes from "./routes/watchListItemsRoute.js"
 import { connectToDatabase, disconnectFromDatabase } from './config/db.js';
 import { config } from 'dotenv';
+import { watchlistStatus } from '@prisma/client';
 config();
 connectToDatabase();
 const app = express();
+
 
 // Body parsing middlewares
 app.use(express.json());
@@ -17,6 +20,9 @@ console.log("Auth routes");
 app.use("/auth", authRoutes);
 console.log("Movie routes loaded");
 app.use("/movies", movieRoutes);
+app.use("/watch", watchlistRoutes);
+
+
 app.use("airline", flygateRoutes);
 
 //Handle unhandled promise rejection eg, DB connection errors

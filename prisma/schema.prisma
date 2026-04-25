@@ -54,8 +54,12 @@ model WatchlistItem {
   //relationships
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, movieId])
 }
 
+
+// 
 model FLYGATEDetails {
   auto             BigInt   @id @default(autoincrement())
   orderId          String   @db.VarChar(20)
@@ -71,6 +75,14 @@ model FLYGATEDetails {
   entryDate        DateTime @default(now()) @db.Timestamp
 }
 
+model PendingOrder {
+  orderId      String   @id
+  amount       Float
+  customerName String?
+  createdAt    DateTime @default(now())
+
+  @@map("pending_orders")
+}
 
 model GlConfiguration {
   code            String @id @db.VarChar(10) @map("CODE")
@@ -183,15 +195,6 @@ model transactions {
   trnTime DateTime @default(now())
   trnDate DateTime
   status trnStatus
-}
-
-model PendingOrder {
-  orderId      String   @id
-  amount       Float
-  customerName String?
-  createdAt    DateTime @default(now())
-
-  @@map("pending_orders")
 }
 
 enum watchlistStatus {
