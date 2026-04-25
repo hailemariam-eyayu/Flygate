@@ -1,5 +1,5 @@
 import jwt from "JsonWebToken";
-import { prisma, Prisma } from "../config/db.js";
+import { prisma } from "../config/db.js";
 import { json } from "express";
 
 // read token from endpoint and check validity

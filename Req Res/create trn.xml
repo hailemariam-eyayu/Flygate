@@ -1,0 +1,108 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:fcub="http://fcubs.ofss.com/service/FCUBSRTService">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <fcub:REVERSETRANSACTION_IOPK_REQ>
+         <fcub:FCUBS_HEADER>
+            <fcub:SOURCE>?</fcub:SOURCE>
+            <fcub:UBSCOMP>?</fcub:UBSCOMP>
+            <!--Optional:-->
+            <fcub:MSGID>?</fcub:MSGID>
+            <!--Optional:-->
+            <fcub:CORRELID>?</fcub:CORRELID>
+            <fcub:USERID>?</fcub:USERID>
+            <fcub:BRANCH>?</fcub:BRANCH>
+            <!--Optional:-->
+            <fcub:MODULEID>?</fcub:MODULEID>
+            <fcub:SERVICE>?</fcub:SERVICE>
+            <fcub:OPERATION>?</fcub:OPERATION>
+            <!--Optional:-->
+            <fcub:SOURCE_OPERATION>?</fcub:SOURCE_OPERATION>
+            <!--Optional:-->
+            <fcub:SOURCE_USERID>?</fcub:SOURCE_USERID>
+            <!--Optional:-->
+            <fcub:DESTINATION>?</fcub:DESTINATION>
+            <!--Optional:-->
+            <fcub:MULTITRIPID>?</fcub:MULTITRIPID>
+            <!--Optional:-->
+            <fcub:FUNCTIONID>?</fcub:FUNCTIONID>
+            <!--Optional:-->
+            <fcub:ACTION>?</fcub:ACTION>
+            <!--Optional:-->
+            <fcub:MSGSTAT>?</fcub:MSGSTAT>
+            <!--Optional:-->
+            <fcub:PASSWORD>?</fcub:PASSWORD>
+            <!--Optional:-->
+            <fcub:ADDL>
+               <!--Zero or more repetitions:-->
+               <fcub:PARAM>
+                  <fcub:NAME>?</fcub:NAME>
+                  <fcub:VALUE>?</fcub:VALUE>
+               </fcub:PARAM>
+            </fcub:ADDL>
+         </fcub:FCUBS_HEADER>
+         <fcub:FCUBS_BODY>
+            <fcub:Transaction-Details-IO>
+               <!--Optional:-->
+               <fcub:XREF>?</fcub:XREF>
+               <!--Optional:-->
+               <fcub:FCCREF>?</fcub:FCCREF>
+            </fcub:Transaction-Details-IO>
+         </fcub:FCUBS_BODY>
+      </fcub:REVERSETRANSACTION_IOPK_REQ>
+   </soapenv:Body>
+</soapenv:Envelope>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+   <S:Header>
+      <work:WorkContext xmlns:work="http://oracle.com/weblogic/soap/workarea/">rO0ABXejABt3ZWJsb2dpYy5hcHAuRkNVQlNSVFNlcnZpY2UAAADWAAAAI3dlYmxvZ2ljLndvcmthcmVhLlN0cmluZ1dvcmtDb250ZXh0AAsxMi4wLjMuNS4xMAASd2VibG9naWMuYXBwLkdXRUpCAAAA1gAAACN3ZWJsb2dpYy53b3JrYXJlYS5TdHJpbmdXb3JrQ29udGV4dAALMTIuMC4zLjUuMTAAAA==</work:WorkContext>
+   </S:Header>
+   <S:Body>
+      <REVERSETRANSACTION_IOPK_RES xmlns="http://fcubs.ofss.com/service/FCUBSRTService">
+         <FCUBS_HEADER>
+            <SOURCE>?</SOURCE>
+            <MSGID>?</MSGID>
+            <CORRELID>?</CORRELID>
+            <USERID>?</USERID>
+            <BRANCH>?</BRANCH>
+            <MODULEID>?</MODULEID>
+            <SERVICE>?</SERVICE>
+            <OPERATION>?</OPERATION>
+            <SOURCE_OPERATION>?</SOURCE_OPERATION>
+            <SOURCE_USERID>?</SOURCE_USERID>
+            <DESTINATION>?</DESTINATION>
+            <MULTITRIPID>?</MULTITRIPID>
+            <FUNCTIONID>?</FUNCTIONID>
+            <ACTION>?</ACTION>
+            <MSGSTAT>FAILURE</MSGSTAT>
+            <PASSWORD>XXXXXXXXXXXXXXXXXXXXXXX</PASSWORD>
+            <ADDL>
+               <PARAM>
+                  <NAME>?</NAME>
+                  <VALUE>?</VALUE>
+               </PARAM>
+            </ADDL>
+         </FCUBS_HEADER>
+         <FCUBS_BODY>
+            <FCUBS_ERROR_RESP>
+               <ERROR>
+                  <ECODE>ST-OTHR-001</ECODE>
+                  <EDESC>Unhandled Exception</EDESC>
+               </ERROR>
+            </FCUBS_ERROR_RESP>
+         </FCUBS_BODY>
+      </REVERSETRANSACTION_IOPK_RES>
+   </S:Body>
+</S:Envelope>

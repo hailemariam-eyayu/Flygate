@@ -50,10 +50,5 @@ process.on("SIGTERM", async () => {
 
 const port = process.env.PORT || 4001;
 app.listen(port, () => {
-<<<<<<< HEAD
-  console.log(`Server is running on port ${port}`);
-});
-=======
   console.log(`Server is running at http://localhost:${port}`);
 });
->>>>>>> cbfe60abcf8f648a81c6d62668eeea2b7752d776
