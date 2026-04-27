@@ -1,0 +1,235 @@
+# 🚀 Flygate Backend API Server
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge&logo=node.js" alt="Node.js">
+  <img src="https://img.shields.io/badge/Express-5.x-blue?style=for-the-badge&logo=express" alt="Express">
+  <img src="https://img.shields.io/badge/Prisma-5.x-purple?style=for-the-badge" alt="Prisma">
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License">
+</p>
+
+> A robust Node.js Express backend server with security features, external API integration, and support for JSON/XML data handling. Built for mobile payment applications.
+
+---
+
+## 📋 Table of Contents
+
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Quick Start](#-quick-start)
+- [Environment Setup](#-environment-setup)
+- [API Endpoints](#-api-endpoints)
+- [Project Structure](#-project-structure)
+- [Security](#-security)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+---
+
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 🔐 **Security** | Helmet for HTTP security headers, CORS support, rate limiting |
+| 🔑 **Authentication** | JWT-based authentication with token generation |
+| 🌐 **External API Integration** | Axios for HTTP requests to external services |
+| 📄 **Data Formats** | Full JSON and XML support |
+| ⚙️ **Environment Management** | Dotenv for configuration management |
+| 🗄️ **Database** | Prisma ORM with SQLite (development) |
+
+---
+
+## 🛠 Tech Stack
+
+<div align="center">
+
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| **Node.js** | 18+ | Runtime environment |
+| **Express** | ^5.2.1 | Web framework |
+| **Prisma** | ^5.x | Database ORM |
+| **Axios** | ^1.x | HTTP client |
+| **xml2js** | ^0.6.x | XML parsing |
+| **Helmet** | ^7.x | Security headers |
+| **CORS** | ^2.x | Cross-origin support |
+| **JWT** | ^9.x | Authentication |
+| **dotenv** | ^16.x | Environment config |
+
+</div>
+
+---
+
+## 🚦 Quick Start
+
+### Prerequisites
+
+- Node.js 18 or higher
+- npm or yarn
+
+### Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+
+# Navigate to project directory
+cd Flygate
+
+# Install dependencies
+npm install
+```
+
+### Running the Server
+
+**Development:**
+```bash
+npm run dev
+```
+
+**Production:**
+```bash
+npm start
+```
+
+The server will run on `http://localhost:3000` (or the port specified in `.env`).
+
+---
+
+## ⚙️ Environment Setup
+
+Create a `.env` file in the root directory:
+
+```env
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+
+# JWT Configuration
+JWT_SECRET=your_super_secret_jwt_key_here
+JWT_EXPIRES_IN=24h
+
+# External API Keys
+ORG_API_KEY=your_organization_api_key
+EXTERNAL_API_KEY=your_external_api_key
+
+# Database
+DATABASE_URL="file:./dev.db"
+```
+
+---
+
+## 📡 API Endpoints
+
+### 🔓 Public Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Health check - returns "Hello, World!" |
+| GET | `/api/external/json` | Fetch JSON from external API |
+| GET | `/api/external/xml` | Parse XML and return as JSON |
+
+### 🔐 Authentication Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/login` | Generate JWT token |
+| GET | `/api/protected` | Protected route (requires JWT) |
+
+#### Example: Login Request
+
+```bash
+curl -X POST http://localhost:3000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "password"}'
+```
+
+#### Example: Protected Request
+
+```bash
+curl -X GET http://localhost:3000/api/protected \
+  -H "Authorization: Bearer <your_jwt_token>"
+```
+
+### 💰 Beneficiary Verification
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/beneficiary/verify` | Verify beneficiary by mobile number |
+
+#### Request
+
+```json
+{
+  "mobileNumber": "911111111"
+}
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "fullName": "John Doe",
+    "status": "active"
+  }
+}
+```
+
+---
+
+## 📁 Project Structure
+
+```
+Flygate/
+├── prisma/
+│   ├── schema.prisma          # Database schema
+│   └── migrations/            # Database migrations
+├── src/
+│   ├── config/
+│   │   └── db.js              # Database configuration
+│   ├── controllers/
+│   │   ├── AuthController.js  # Authentication logic
+│   │   └── flygateController.js # Business logic
+│   ├── routes/
+│   │   ├── AuthRoutes.js      # Auth endpoints
+│   │   ├── flygateRoutes.js   # Flygate endpoints
+│   │   └── MovieRoutes.js     # Movie endpoints
+│   ├── utils/
+│   │   └── generateToken.js   # JWT token generator
+│   └── server.js              # Main server entry
+├── .env                       # Environment variables
+├── package.json               # Dependencies
+└── README.md                  # This file
+```
+
+---
+
+## 🔒 Security Features
+
+- ✅ **Rate Limiting** - 100 requests per 15 minutes per IP
+- ✅ **Security Headers** - Via Helmet middleware
+- ✅ **CORS** - Configured for cross-origin requests
+- ✅ **JWT Authentication** - Token-based protection for routes
+- ✅ **Input Validation** - Request body validation
+
+---
+
+## 🤝 Contributing
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add some amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+---
+
+## 📄 License
+
+<div align="center">
+
+**Flygate** © 2024
+
+Made with ❤️ for mobile payment solutions
+
+</div>
