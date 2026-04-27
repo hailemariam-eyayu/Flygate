@@ -143,14 +143,23 @@ const confirmOrder = async (req, res) => {
         }).catch(e => console.error("CBS Log Error:", e));
 
         // Create SOAP client and call CBS
-        const cbsResponse = await soap.createClientAsync(CBS_URL, { rejectUnauthorized: false })
-            .then(client => {
-                return client.REVERSETRANSACTION_IOPK_REQAsync(cbsRequestArgs);
-            })
-            .catch(err => {
-                console.error("CBS SOAP Error:", err);
-                throw new Error("Failed to process transaction with CBS");
-            });
+        const soapClient = await soap.createClientAsync(CBS_URL, { rejectUnauthorized: false });
+        
+        // Debug: Log ALL available SOAP methods
+        console.log("All SOAP methods:", Object.keys(soapClient));
+        console.log("Methods with 'Tfr':", Object.keys(soapClient).filter(k => k.includes('Tfr')));
+        console.log("Methods with 'Transaction':", Object.keys(soapClient).filter(k => k.includes('Transaction')));
+        
+        let cbsResponse;
+        try {
+            cbsResponse = await soapClient.REVERSETRANSACTION_IOPK_REQAsync(cbsRequestArgs);
+            
+            // Log raw XML response
+            console.log("Raw CBS XML Response:", soapClient.lastResponse);
+        } catch (err) {
+            console.error("CBS SOAP Error:", err);
+            throw new Error("Failed to process transaction with CBS");
+        }
         console.log("Response from CBS (REVERSETRANSACTION_IOPK_RES):", JSON.stringify(cbsResponse, null, 2));
 
         // Log CBS Response
@@ -291,14 +300,23 @@ const refundRequest = async (req, res) => {
 
         //  Sending request to CBS to reverse the transaction
         // return client.ReverseTransactionAsync(cbsRequestArgs);
-        const cbsResponse = await soap.createClientAsync(CBS_URL, { rejectUnauthorized: false })
-            .then(client => {
-                return client.REVERSETRANSACTION_FSFS_REQAsync(cbsRequestArgs);
-            })
-            .catch(err => {
-                console.error("CBS SOAP Error during reversal:", err);
-                throw new Error("Failed to reverse transaction with CBS");
-            });
+        const soapClient = await soap.createClientAsync(CBS_URL, { rejectUnauthorized: false });
+        
+        // Debug: Log ALL available SOAP methods (refund)
+        console.log("All SOAP methods (refund):", Object.keys(soapClient));
+        console.log("Methods with 'Tfr' (refund):", Object.keys(soapClient).filter(k => k.includes('Tfr')));
+        console.log("Methods with 'Transaction' (refund):", Object.keys(soapClient).filter(k => k.includes('Transaction')));
+        
+        let cbsResponse;
+        try {
+            cbsResponse = await soapClient.REVERSETRANSACTION_FSFS_REQAsync(cbsRequestArgs);
+            
+            // Log raw XML response
+            console.log("Raw CBS XML Response (refund):", soapClient.lastResponse);
+        } catch (err) {
+            console.error("CBS SOAP Error during reversal:", err);
+            throw new Error("Failed to reverse transaction with CBS");
+        }
         console.log("Response from CBS (ReverseTransaction):", JSON.stringify(cbsResponse, null, 2));
 
         // Log CBS Refund Response

@@ -1,12 +1,9 @@
 import express from "express";
-import axios from "axios";
-import https from "https";
+import soap from "soap";
+import axios from "axios"; // Added missing import
 import { config } from 'dotenv';
 import { prisma } from "../config/db.js";
 config();
-
-// Disable TLS verification for self-signed certs on internal endpoints
-const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 const shortcode = process.env.shortCodeT || 526341;
 const url = process.env.BASE_URL; // Ensure URL is defined
@@ -27,7 +24,7 @@ const validatePNR = async (req, res) => {
 
         const response = await axios.get(`${url}/Enat/api/V1.0/Enat/GetOrder`, {
             params: getOrderParams,
-            httpsAgent,
+            // Add this block
             auth: {
                 username: 'EnatBankTest@ethiopianairlines.com',
                 password: 'EnatBankTest@!23'
@@ -43,7 +40,7 @@ const validatePNR = async (req, res) => {
             // Store order details for later use in confirmOrder
             console.log("Response data:", response.data);
 
-            const savedOrder = await prisma.flyGateOrder.upsert({
+            const savedOrder = await prisma.fLYGATEDetails.upsert({
                 where: { orderId: orderid },
                 update: {
                     amount: Number(response.data.Amount || response.data.amount || 0),
@@ -83,107 +80,95 @@ const validatePNR = async (req, res) => {
 
 
 // Configuration from your Web.config
-const CBS_URL = process.env.cbs_url || "http://10.1.22.100:7003/FCUBSRTService/FCUBSRTService?WSDL";
+const CBS_URL = process.env.cbs_url || "http://10.1.22.100:7003/FCUBSAccService/FCUBSAccService?WSDL";
 const CBS_USER = process.env.cbs_user || "ADCUSER";
-const CBS_PASS = process.env.cbs_pass || "cbs_password";
+const CBS_PASS = process.env.cbs_pass || "cbs_password"; // Replace with actual password
 
 const confirmOrder = async (req, res) => {
     const { orderid, beneficiaryAcno, remark } = req.body;
 
     try {
-        // --- PRE-CBS CHECKS (commented out for CBS testing) ---
-        // const storedOrder = await prisma.flyGateOrder.findFirst({
-        //     where: { orderId: orderid }
-        // });
-        // if (!storedOrder) {
-        //     return res.status(404).json({ status: "Error", message: "Order details not found. Please validate PNR first." });
-        // }
-        // if (storedOrder.status === 1) {
-        //     return res.status(400).json({ status: "Error", message: "Order has already been paid." });
-        // }
-        // const amount = storedOrder.amount;
-        // const customerName = storedOrder.customerName;
-        // const finalTraceNumber = storedOrder.id || `TRC${Date.now()}`;
+        // Retrieve stored data from validation step
+        // const storedOrder = await prisma.fLYGATEDetails.findUnique({
+        const storedOrder = await prisma.fLYGATEDetails.findFirst({
+            where: { orderId: orderid }
+        });
 
-        // Hardcoded for CBS testing — replace with storedOrder values when re-enabling
-        const amount = req.body.amount || 100;
-        const customerName = req.body.customerName || "Test Customer";
-        const finalTraceNumber = `TRC${Date.now()}`;
-        const xref = `FLYGATE-${orderid}-${Date.now()}`; // External reference sent to CBS
-
-        // --- 1. CBS INTERACTION (XML via Axios) ---
-        const soapRequestXml = `
-            <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:fcub="http://fcubs.ofss.com/service/FCUBSRTService">
-               <soapenv:Header/>
-               <soapenv:Body>
-                  <fcub:REVERSETRANSACTION_IOPK_REQ>
-                     <FCUBS_HEADER>
-                        <SOURCE>PTP</SOURCE>
-                        <UBSCOMP>FCUBS</UBSCOMP>
-                        <MSGID>MSG${Date.now()}</MSGID>
-                        <CORRELID>CORR${Date.now()}</CORRELID>
-                        <USERID>${CBS_USER}</USERID>
-                        <BRANCH>001</BRANCH>
-                        <MODULEID>RT</MODULEID>
-                        <SERVICE>FCUBSRTService</SERVICE>
-                        <OPERATION>ReverseTransaction</OPERATION>
-                        <PASSWORD>${CBS_PASS}</PASSWORD>
-                     </FCUBS_HEADER>
-                     <FCUBS_BODY>
-                        <Transaction-Details-IO>
-                           <XREF>${xref}</XREF>
-                           <FCCREF></FCCREF>
-                        </Transaction-Details-IO>
-                     </FCUBS_BODY>
-                  </fcub:REVERSETRANSACTION_IOPK_REQ>
-               </soapenv:Body>
-            </soapenv:Envelope>`;
-
-        console.log("Request to CBS (XML):", soapRequestXml);
-
-        // Log CBS Request
-        if (prisma.cBSLog) {
-            await prisma.cBSLog.create({
-                data: { orderId: orderid, status: "REQ", type: "CONFIRM", payload: soapRequestXml }
-            }).catch(e => console.error("CBS Log Error:", e));
+        if (!storedOrder) {
+            return res.status(404).json({ status: "Error", message: "Order details not found. Please validate PNR first." });
         }
+
+        // Checking order status whether it is already paid or not
+        if (storedOrder.status === 1) {
+            return res.status(400).json({ status: "Error", message: "Order has already been paid." });
+        }
+
+        const amount = storedOrder.amount;
+        const customerName = storedOrder.customerName;
+        const finalTraceNumber = storedOrder.id || `TRC${Date.now()}`; // Using DB ID for TraceNumber
+        const finalReferenceNumber = `CBS${Date.now()}`; // Default value for CBS reference
+
+        // --- 1. CBS INTERACTION (SOAP) ---
+        const cbsRequestArgs = {
+            "FCUBS_HEADER": {
+                "SOURCE": "PTP",
+                "UBSCOMP": "FCUBS",
+                "CORRELID": `CORR${Date.now()}`,
+                "USERID": CBS_USER,
+                "BRANCH": "001",
+                "MODULEID": "RT",
+                "SERVICE": "FCUBSAccService",
+                "OPERATION": "Create Transaction"
+            },
+            "FCUBS_BODY": {
+                "Transaction-Details": {
+                    "PRD": "EMIT",
+                    "BRN": "001",
+                    "TXNBRN": "001",
+                    "TXNACC": beneficiaryAcno,
+                    "TXNCCY": "ETB",
+                    "TXNAMT": amount,
+                    "OFFSETBRN": "001",
+                    "OFFSETACC": process.env.airlineAccountNumber,
+                    "OFFSETCCY": "ETB",
+                    "OFFSETAMT": amount,
+                    "TXNDATE": new Date().toISOString().split('T')[0],
+                    "NARRATIVE": `Flygate Trn for order ID ${orderid}`,
+                    "AUTHSTAT": "A"
+                }
+            }
+        };
+
+        console.log("Request to CBS (CreateTransaction):", JSON.stringify(cbsRequestArgs, null, 2));
         
-        let cbsResponseXml;
-        try {
-            const response = await axios.post(CBS_URL, soapRequestXml, {
-                headers: {
-                    'Content-Type': 'text/xml;charset=utf-8',
-                    'SOAPAction': 'REVERSETRANSACTION_IOPK_REQ'
-                },
-                httpsAgent
+        // Log Request to DB
+        await prisma.dBLog.create({
+            data: {
+                type: "CBS_CONFIRM_REQ",
+                orderId: orderid,
+                payload: JSON.stringify(cbsRequestArgs)
+            }
+        }).catch(e => console.error("Log Error:", e));
+
+        // Create SOAP client and call CBS
+        const cbsResponse = await soap.createClientAsync(CBS_URL)
+            .then(client => {
+                return client.CreateTransactionAsync(cbsRequestArgs);
+            })
+            .catch(err => {
+                console.error("CBS SOAP Error:", err);
+                throw new Error("Failed to process transaction with CBS");
             });
-            cbsResponseXml = response.data;
-            console.log("Raw CBS XML Response:", cbsResponseXml);
-        } catch (err) {
-            console.error("CBS XML Error:", err.response?.data || err.message);
-            throw new Error("Failed to process transaction with CBS");
-        }
+        console.log("Response from CBS (CreateTransaction):", JSON.stringify(cbsResponse, null, 2));
 
-        // Log CBS Response
-        if (prisma.cBSLog) {
-            await prisma.cBSLog.create({
-                data: { orderId: orderid, status: "RES", type: "CONFIRM", payload: cbsResponseXml }
-            }).catch(e => console.error("CBS Log Error:", e));
-        }
-
-        // Simple XML parsing for success check and FCCREF extraction
-        const isSuccess = cbsResponseXml.includes("<MSGSTAT>SUCCESS</MSGSTAT>");
-        if (!isSuccess) {
-            const errorMatch = cbsResponseXml.match(/<EDESC>(.*?)<\/EDESC>/);
-            const errDesc = errorMatch ? errorMatch[1] : "CBS transaction failed";
-            throw new Error(`CBS Error: ${errDesc}`);
-        }
-
-        const fccRefMatch = cbsResponseXml.match(/<FCCREF>(.*?)<\/FCCREF>/);
-        const finalReferenceNumber = fccRefMatch ? fccRefMatch[1] : xref;
-
-        // --- 2. FLYGATE INTERACTION (REST) ---
-        // ... (rest of the logic remains the same)
+        // Log Response to DB
+        await prisma.dBLog.create({
+            data: {
+                type: "CBS_CONFIRM_RES",
+                orderId: orderid,
+                payload: JSON.stringify(cbsResponse)
+            }
+        }).catch(e => console.error("Log Error:", e));
 
         // --- 2. FLYGATE INTERACTION (REST) ---
 
@@ -202,30 +187,31 @@ const confirmOrder = async (req, res) => {
 
         console.log("Request to Flygate (ConfirmOrder):", flyGatePayload);
 
-        // Log FlyGate Request
-        if (prisma.flyGateLog) {
-            await prisma.flyGateLog.create({
-                data: { orderId: orderid, status: "REQ", type: "CONFIRM", payload: JSON.stringify(flyGatePayload) }
-            }).catch(e => console.error("FlyGate Log Error:", e));
-        }
+        // Log Flygate Request
+        await prisma.dBLog.create({
+            data: {
+                type: "FLYGATE_CONFIRM_REQ",
+                orderId: orderid,
+                payload: JSON.stringify(flyGatePayload)
+            }
+        }).catch(e => console.error("Log Error:", e));
 
-        // Update order status to paid in DB (commented out for CBS testing)
-        // await prisma.flyGateOrder.update({
-        //     where: { orderId: orderid },
-        //     data: {
-        //         status: 1,
-        //         beneficiaryAcno: beneficiaryAcno,
-        //         traceNumber: String(finalTraceNumber),
-        //         referenceNumber: finalReferenceNumber
-        //     }
-        // }).catch(e => console.error("Update Status Error:", e));
+        // Update order status to paid in DB
+        await prisma.fLYGATEDetails.update({
+            where: { orderId: orderid },
+            data: { 
+                status: 1,
+                beneficiaryAcno: beneficiaryAcno,
+                traceNumber: finalTraceNumber,
+                referenceNumber: finalReferenceNumber
+            }
+        }).catch(e => console.error("Update Status Error:", e));
 
         // FlyGate interaction
         const flyGateResponse = await axios.post(
             `${url}/Enat/api/V1.0/Enat/ConfirmOrder`,
             flyGatePayload,
             {
-                httpsAgent,
                 auth: {
                     username: 'EnatBankTest@ethiopianairlines.com',
                     password: 'EnatBankTest@!23'
@@ -234,12 +220,14 @@ const confirmOrder = async (req, res) => {
         );
         console.log("Response from Flygate (ConfirmOrder):", flyGateResponse.data);
 
-        // Log FlyGate Response
-        if (prisma.flyGateLog) {
-            await prisma.flyGateLog.create({
-                data: { orderId: orderid, status: "RES", type: "CONFIRM", payload: JSON.stringify(flyGateResponse.data) }
-            }).catch(e => console.error("FlyGate Log Error:", e));
-        }
+        // Log Flygate Response
+        await prisma.dBLog.create({
+            data: {
+                type: "FLYGATE_CONFIRM_RES",
+                orderId: orderid,
+                payload: JSON.stringify(flyGateResponse.data)
+            }
+        }).catch(e => console.error("Log Error:", e));
 
         return res.json({
             status: "Success",
@@ -276,7 +264,7 @@ const refundRequest = async (req, res) => {
     const { shortCode, orderId, firstName, lastName, amount, currency, ReferenceNumber, refundFOP, refundReferenceCode } = req.body;
 
     try {
-        const order = await prisma.flyGateOrder.findFirst({ where: { orderId: orderId } });
+        const order = await prisma.fLYGATEDetails.findFirst({ where: { orderId: orderId } });
 
         // CBS Interaction to reverse the transaction
         console.log("Initiating CBS transaction reversal for ReferenceNumber:", ReferenceNumber);
@@ -300,36 +288,35 @@ const refundRequest = async (req, res) => {
 
         console.log("Request to CBS (ReverseTransaction):", JSON.stringify(cbsRequestArgs, null, 2));
 
-        // Log CBS Refund Request
-        await prisma.cBSLog.create({
-            data: { orderId: orderId, status: "REQ", type: "REFUND", payload: JSON.stringify(cbsRequestArgs) }
-        }).catch(e => console.error("CBS Log Error:", e));
+        // Log Reversal Request
+        await prisma.dBLog.create({
+            data: {
+                type: "CBS_REFUND_REQ",
+                orderId: orderId,
+                payload: JSON.stringify(cbsRequestArgs)
+            }
+        }).catch(e => console.error("Log Error:", e));
 
         //  Sending request to CBS to reverse the transaction
         // return client.ReverseTransactionAsync(cbsRequestArgs);
-        const soapClient = await soap.createClientAsync(CBS_URL, { rejectUnauthorized: false });
-        
-        // Debug: Log ALL available SOAP methods (refund)
-        console.log("All SOAP methods (refund):", Object.keys(soapClient));
-        console.log("Methods with 'Tfr' (refund):", Object.keys(soapClient).filter(k => k.includes('Tfr')));
-        console.log("Methods with 'Transaction' (refund):", Object.keys(soapClient).filter(k => k.includes('Transaction')));
-        
-        let cbsResponse;
-        try {
-            cbsResponse = await soapClient.REVERSETRANSACTION_FSFS_REQAsync(cbsRequestArgs);
-            
-            // Log raw XML response
-            console.log("Raw CBS XML Response (refund):", soapClient.lastResponse);
-        } catch (err) {
-            console.error("CBS SOAP Error during reversal:", err);
-            throw new Error("Failed to reverse transaction with CBS");
-        }
+        const cbsResponse = await soap.createClientAsync(CBS_URL)
+            .then(client => {
+                return client.REVERSETRANSACTION_FSFS_REQAsync(cbsRequestArgs);
+            })
+            .catch(err => {
+                console.error("CBS SOAP Error during reversal:", err);
+                throw new Error("Failed to reverse transaction with CBS");
+            });
         console.log("Response from CBS (ReverseTransaction):", JSON.stringify(cbsResponse, null, 2));
 
-        // Log CBS Refund Response
-        await prisma.cBSLog.create({
-            data: { orderId: orderId, status: "RES", type: "REFUND", payload: JSON.stringify(cbsResponse) }
-        }).catch(e => console.error("CBS Log Error:", e));
+        // Log Reversal Response
+        await prisma.dBLog.create({
+            data: {
+                type: "CBS_REFUND_RES",
+                orderId: orderId,
+                payload: JSON.stringify(cbsResponse)
+            }
+        }).catch(e => console.error("Log Error:", e));
 
         if (cbsResponse && cbsResponse[0] && FCUBS_HEADER.MSGSTAT === "SUCCESS") {
             const flyGatePayload = {
@@ -348,15 +335,10 @@ const refundRequest = async (req, res) => {
             };
 
             console.log("Request to Flygate (ConfirmRefund):", flyGatePayload);
-            // Log FlyGate Refund Request
-            await prisma.flyGateLog.create({
-                data: { orderId: orderId, status: "REQ", type: "REFUND", payload: JSON.stringify(flyGatePayload) }
-            }).catch(e => console.error("FlyGate Log Error:", e));
             const flyGateResponse = await axios.post(
                 `${url}/Enat/api/V1.0/Enat/ConfirmRefund`,
                 flyGatePayload,
                 {
-                    httpsAgent,
                     auth: {
                         username: 'EnatBankTest@ethiopianairlines.com',
                         password: 'EnatBankTest@!23'
@@ -364,10 +346,6 @@ const refundRequest = async (req, res) => {
                 }
             );
             console.log("Response from Flygate (ConfirmRefund):", flyGateResponse.data);
-            // Log FlyGate Refund Response
-            await prisma.flyGateLog.create({
-                data: { orderId: orderId, status: "RES", type: "REFUND", payload: JSON.stringify(flyGateResponse.data) }
-            }).catch(e => console.error("FlyGate Log Error:", e));
 
             return res.status(200).json({
                 "ResponseCode": 1,

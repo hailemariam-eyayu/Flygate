@@ -1,0 +1,27 @@
+Request to CBS (XML):  
+            <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:fcub="http://fcubs.ofss.com/service/FCUBSRTService">
+               <soapenv:Header/>
+               <soapenv:Body>
+                  <fcub:REVERSETRANSACTION_IOPK_REQ>
+                     <FCUBS_HEADER>
+                        <SOURCE>PTP</SOURCE>
+                        <UBSCOMP>FCUBS</UBSCOMP>
+                        <MSGID>MSG1777288429193</MSGID>
+                        <CORRELID>CORR1777288429193</CORRELID>
+                        <USERID>ADCUSER</USERID>
+                        <BRANCH>001</BRANCH>
+                        <MODULEID>RT</MODULEID>
+                        <SERVICE>FCUBSRTService</SERVICE>
+                        <OPERATION>ReverseTransaction</OPERATION>
+                        <PASSWORD>cbs_password</PASSWORD>
+                     </FCUBS_HEADER>
+                     <FCUBS_BODY>
+                        <Transaction-Details-IO>
+                           <XREF>FLYGATE-WSRDFG-1777288429193</XREF>
+                           <FCCREF></FCCREF>
+                        </Transaction-Details-IO>
+                     </FCUBS_BODY>
+                  </fcub:REVERSETRANSACTION_IOPK_REQ>
+               </soapenv:Body>
+            </soapenv:Envelope>
+CBS XML Error: <?xml version='1.0' encoding='UTF-8'?><S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><S:Header><work:WorkContext xmlns:work="http://oracle.com/weblogic/soap/workarea/">rO0ABXdYABx3ZWJsb2dpYy5hcHAuRkNVQlNBY2NTZXJ2aWNlAAAA1gAAACN3ZWJsb2dpYy53b3JrYXJlYS5TdHJpbmdXb3JrQ29udGV4dAALMTIuMC4zLjUuMTAAAA==</work:WorkContext></S:Header><S:Body><S:Fault xmlns:ns4="http://www.w3.org/2003/05/soap-envelope"><faultcode>S:Client</faultcode><faultstring>Cannot find dispatch method for {http://fcubs.ofss.com/service/FCUBSRTService}REVERSETRANSACTION_IOPK_REQ</faultstring></S:Fault></S:Body></S:Envelope>
